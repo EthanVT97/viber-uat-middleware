@@ -1,17 +1,18 @@
 import os
-from dotenv import load_dotenv
-
-load_dotenv()
 
 class Config:
-    # Viber
-    VIBER_TOKEN = os.getenv("VIBER_TOKEN")  # From Viber Admin Panel
-    VIBER_WEBHOOK_SECRET = os.getenv("VIBER_WEBHOOK_SECRET")
+    # Default to localhost for local development, Render will override BASE_URL
+    BASE_URL = os.getenv("BASE_URL", "http://localhost:10000")
 
-    # UAT APIs
-    CUSTOMER_API_KEY = os.getenv("CUSTOMER_API_KEY", "sandbox_customer_123")
-    BILLING_API_KEY = os.getenv("BILLING_API_KEY", "sandbox_billing_456")
-    CHATLOG_API_KEY = os.getenv("CHATLOG_API_KEY", "sandbox_chatlog_789")
+    # API Keys - MUST be set as Render environment variables
+    CUSTOMER_API_KEY = os.getenv("CUSTOMER_API_KEY")
+    BILLING_API_KEY = os.getenv("BILLING_API_KEY")
+    MONITOR_TOKEN = os.getenv("MONITOR_TOKEN")
 
-    # Monitor
-    MONITOR_TOKEN = os.getenv("MONITOR_TOKEN", "shwechatuat2025")
+    # Viber Bot App Key for signature verification (if fully implemented)
+    # IMPORTANT: In a real app, this MUST be a strong, randomly generated key.
+    # This is a placeholder for your actual Viber Bot application key.
+    VIBER_BOT_APP_KEY = os.getenv("VIBER_BOT_APP_KEY", "your_viber_app_key_here") # Replace with your actual key or get from env
+
+    if not CUSTOMER_API_KEY or not BILLING_API_KEY or not MONITOR_TOKEN:
+        print("WARNING: API keys or Monitor Token not set in environment variables. This might cause issues.")
