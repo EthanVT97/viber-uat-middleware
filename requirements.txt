@@ -1,6 +1,5 @@
-fastapi==0.95.2
-uvicorn==0.22.0
-pydantic==1.10.7
-jinja2==3.1.2
-requests==2.31.0
-python-dotenv==1.0.0
+fastapi==0.111.0 # Or your current version
+uvicorn[standard]==0.30.1 # Or your current version
+jinja2==3.1.4 # Or your current version
+requests==2.32.3 # Or your current version
+pydantic==2.7.4 # Or your current version, often pulled by fastapi
