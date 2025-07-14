@@ -6,45 +6,61 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body { font-family: sans-serif; }
-    .message-container { max-height: 70vh; overflow-y: auto; }
-    .user-message { background-color: #e2e8f0; border-radius: 8px; padding: 8px; margin-bottom: 8px; }
-    .agent-message { background-color: #bfecde; border-radius: 8px; padding: 8px; margin-bottom: 8px; text-align: right; }
+    .message-container { max-height: 70vh; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 0.375rem; padding: 1rem; }
+    .user-message { background-color: #e2e8f0; border-radius: 8px; padding: 8px; margin-bottom: 8px; max-width: 80%; float: left; clear: both; }
+    .agent-message { background-color: #bfecde; border-radius: 8px; padding: 8px; margin-bottom: 8px; max-width: 80%; float: right; clear: both; }
     .user-id-header { font-weight: bold; color: #4a5568; margin-bottom: 4px; }
-    .timestamp { font-size: 0.75em; color: #718096; text-align: right; margin-top: 4px; }
-    #replyForm { display: none; } /* Hidden by default */
+    .timestamp { font-size: 0.75em; color: #718096; margin-top: 4px; }
+    .agent-message .timestamp { text-align: right; }
+    .user-message .timestamp { text-align: left; }
+    #replyForm { display: none; margin-top: 1rem; }
+    .conversation-item { transition: background-color 0.2s; }
+
+    /* For smaller screens, ensure things stack and fill width */
+    @media (max-width: 767px) { /* Tailind's 'md' breakpoint is 768px */
+      .message-container { max-height: 50vh; } /* Adjust height for smaller screens */
+      .flex-responsive-columns {
+        flex-direction: column; /* Stack columns vertically */
+        gap: 1.5rem; /* Equivalent to space-y-6 */
+      }
+      .flex-responsive-columns > div {
+        width: 100%; /* Make columns full width */
+      }
+    }
   </style>
 </head>
 <body class="bg-gray-100 p-6">
   <h1 class="text-3xl font-bold mb-6">🧑‍💻 Customer Agent Dashboard</h1>
 
-  <div class="flex space-x-6">
+  <!-- Changed div for responsiveness -->
+  <div class="flex flex-col md:flex-row md:space-x-6 space-y-6 md:space-y-0">
     <!-- Conversation List -->
-    <div class="w-1/3 bg-white rounded shadow p-4">
-      <h2 class="text-xl font-semibold mb-4">💬 Ongoing Conversations</h2>
+    <div class="w-full md:w-1/3 bg-white rounded shadow p-4">
+      <h2 class="text-xl font-semibold mb-4">💬 စကားပြောနေဆဲများ</h2>
       <div id="conversationList" class="space-y-4">
-        <!-- Conversations will be loaded here -->
-        <p class="text-gray-500" id="noConversations">No active conversations.</p>
+        <p class="text-gray-500" id="noConversations">စကားပြောဆိုမှု မရှိသေးပါ။</p>
       </div>
     </div>
 
     <!-- Chat Window -->
-    <div class="w-2/3 bg-white rounded shadow p-4">
-      <h2 class="text-xl font-semibold mb-4" id="chatTitle">Select a conversation</h2>
-      <div id="chatWindow" class="message-container border border-gray-200 rounded p-4 mb-4">
+    <div class="w-full md:w-2/3 bg-white rounded shadow p-4">
+      <h2 class="text-xl font-semibold mb-4" id="chatTitle">စကားပြောဆိုမှု တစ်ခုကို ရွေးချယ်ပါ။</h2>
+      <div id="chatWindow" class="message-container mb-4">
         <!-- Messages for selected conversation -->
       </div>
 
       <!-- Reply Form -->
       <form id="replyForm" class="flex items-center space-x-2">
         <input type="hidden" id="currentReceiverId" name="receiver_viber_id">
-        <input type="text" id="replyMessage" name="message_text" placeholder="Type your reply..." class="flex-grow border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Send</button>
-        <button type="button" id="endChatButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">End Chat</button>
+        <input type="text" id="replyMessage" name="message_text" placeholder="သင့်မက်ဆေ့ခ်ျကို ရိုက်ထည့်ပါ..." class="flex-grow border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">ပို့ရန်</button>
+        <button type="button" id="endChatButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Chat ရပ်ရန်</button>
       </form>
     </div>
   </div>
 
   <script>
+    // ... (JavaScript code remains the same as before) ...
     const conversationList = document.getElementById('conversationList');
     const chatWindow = document.getElementById('chatWindow');
     const replyForm = document.getElementById('replyForm');
@@ -66,11 +82,8 @@
           const isAgent = msg.sender === 'agent';
           msgDiv.className = isAgent ? 'agent-message' : 'user-message';
           msgDiv.innerHTML = `
-            <div class="text-sm ${isAgent ? 'text-gray-600' : 'font-semibold'}">
-              ${isAgent ? 'Agent' : `User (${msg.sender_id})`}
-            </div>
             <div class="text-gray-800">${msg.text}</div>
-            <div class="timestamp">${new Date(msg.timestamp).toLocaleString()}</div>
+            <div class="timestamp text-gray-600">${new Date(msg.timestamp).toLocaleString()}</div>
           `;
           chatWindow.appendChild(msgDiv);
         });
@@ -86,15 +99,15 @@
         hasConversations = true;
         const lastMessage = activeConversations[viberId][activeConversations[viberId].length - 1];
         const convDiv = document.createElement('div');
-        convDiv.className = `p-3 border rounded cursor-pointer ${viberId === currentSelectedViberId ? 'bg-blue-100 border-blue-500' : 'hover:bg-gray-50'}`;
+        convDiv.className = `conversation-item p-3 border rounded cursor-pointer ${viberId === currentSelectedViberId ? 'bg-blue-100 border-blue-500' : 'hover:bg-gray-50'}`;
         convDiv.innerHTML = `
-          <div class="font-bold">User ID: ${viberId}</div>
+          <div class="font-bold">အသုံးပြုသူ ID: ${viberId}</div>
           <div class="text-sm text-gray-600 truncate">${lastMessage ? lastMessage.text : ''}</div>
         `;
         convDiv.onclick = () => {
           currentSelectedViberId = viberId;
           currentReceiverId.value = viberId;
-          chatTitle.textContent = `Chat with User: ${viberId}`;
+          chatTitle.textContent = `အသုံးပြုသူနှင့် Chat: ${viberId}`;
           replyForm.style.display = 'flex'; // Show reply form
           renderChatWindow(viberId);
           renderConversationList(); // Re-render to highlight selected
@@ -104,7 +117,7 @@
       noConversationsMessage.style.display = hasConversations ? 'none' : 'block';
       if (!hasConversations) {
         replyForm.style.display = 'none'; // Hide form if no conversations
-        chatTitle.textContent = 'Select a conversation';
+        chatTitle.textContent = 'စကားပြောဆိုမှု တစ်ခုကို ရွေးချယ်ပါ။';
       }
     }
 
@@ -122,7 +135,7 @@
         }
         activeConversations[viberId].push({
           sender: 'user',
-          sender_id: viberId, // Store sender_id for display
+          sender_id: viberId,
           text: data.message_text,
           timestamp: data.timestamp
         });
@@ -138,12 +151,19 @@
           if (currentSelectedViberId === viberId) {
             currentSelectedViberId = null;
             chatWindow.innerHTML = '';
-            chatTitle.textContent = 'Select a conversation';
+            chatTitle.textContent = 'စကားပြောဆိုမှု တစ်ခုကို ရွေးချယ်ပါ။';
             replyForm.style.display = 'none';
           }
           renderConversationList();
-          alert(`Conversation with user ${viberId} has ended.`);
+          alert(`အသုံးပြုသူ ${viberId} နှင့် စကားပြောဆိုမှု ပြီးဆုံးပါပြီ။`);
         }
+      } else if (data.type === 'new_conversation') {
+         const viberId = data.viber_id;
+         if (!activeConversations[viberId]) {
+            activeConversations[viberId] = [{sender: 'user', sender_id: viberId, text: 'စကားစတင်ပါပြီ။', timestamp: data.timestamp}];
+            renderConversationList();
+            alert(`အသုံးပြုသူ ${viberId} နှင့် စကားပြောဆိုမှု အသစ်စတင်ပါပြီ။`);
+         }
       }
     };
 
@@ -173,31 +193,30 @@
         });
 
         if (response.ok) {
-          // Add agent's message to active conversation for display
           if (!activeConversations[receiverViberId]) {
             activeConversations[receiverViberId] = [];
           }
           activeConversations[receiverViberId].push({
             sender: 'agent',
-            sender_id: 'Agent', // Agent's own ID
+            sender_id: 'Agent',
             text: messageText,
             timestamp: new Date().toISOString()
           });
           renderChatWindow(receiverViberId);
           replyMessageInput.value = ''; // Clear input
         } else {
-          alert('Failed to send message.');
+          alert('မက်ဆေ့ခ်ျ ပို့ရန် မအောင်မြင်ပါ။');
         }
       } catch (error) {
         console.error('Error sending message:', error);
-        alert('Error sending message.');
+        alert('မက်ဆေ့ခ်ျ ပို့ရန် အမှားအယွင်း ဖြစ်ပွားခဲ့ပါသည်။');
       }
     };
 
     // Handle End Chat button
     endChatButton.onclick = async () => {
       if (!currentSelectedViberId) return;
-      if (!confirm(`Are you sure you want to end the chat with ${currentSelectedViberId}?`)) return;
+      if (!confirm(`အသုံးပြုသူ ${currentSelectedViberId} နှင့် စကားပြောဆိုမှုကို ရပ်နားလိုပါသလား။`)) return;
 
       try {
         const response = await fetch('/agent_dashboard/end_chat', {
@@ -211,24 +230,25 @@
         if (response.ok) {
           // SSE will handle removing it from activeConversations, but we can do it locally too
           delete activeConversations[currentSelectedViberId];
-          currentSelectedViberId = null;
+          if (currentSelectedViberId) { // Check if it's still selected after deletion
+            currentSelectedViberId = null;
+          }
           chatWindow.innerHTML = '';
-          chatTitle.textContent = 'Select a conversation';
+          chatTitle.textContent = 'စကားပြောဆိုမှု တစ်ခုကို ရွေးချယ်ပါ။';
           replyForm.style.display = 'none';
           renderConversationList();
-          alert('Chat ended successfully.');
+          alert('Chat ကို အောင်မြင်စွာ ရပ်နားလိုက်ပါပြီ။');
         } else {
-          alert('Failed to end chat.');
+          alert('Chat ရပ်နားရန် မအောင်မြင်ပါ။');
         }
       } catch (error) {
         console.error('Error ending chat:', error);
-        alert('Error ending chat.');
+        alert('Chat ရပ်နားရန် အမှားအယွင်း ဖြစ်ပွားခဲ့ပါသည်။');
       }
     };
 
     // Initial render
     renderConversationList();
-
   </script>
 </body>
-  </html>
+</html>
