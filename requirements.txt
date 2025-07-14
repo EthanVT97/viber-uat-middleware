@@ -1,5 +1,5 @@
-fastapi==0.111.0 # Or your current version
-uvicorn[standard]==0.30.1 # Or your current version
-jinja2==3.1.4 # Or your current version
-requests==2.32.3 # Or your current version
-pydantic==2.7.4 # Or your current version, often pulled by fastapi
+fastapi==0.111.0 
+uvicorn[standard]==0.30.1 
+jinja2==3.1.4
+requests==2.32.3
+pydantic==2.7.4 
