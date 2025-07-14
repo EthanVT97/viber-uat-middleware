@@ -3,3 +3,4 @@ uvicorn
 pydantic
 jinja2
 httpx
+sse_starlette
