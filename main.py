@@ -54,6 +54,30 @@ def log_request(endpoint: str, status_icon: str, payload: dict, error_detail: st
         log_entry["error"] = error_detail
     add_log(log_entry)
 
+# New: Root endpoint for basic health check or welcome message
+@app.get("/")
+async def read_root():
+    """
+    Provides a simple welcome message for the root endpoint.
+    This helps to avoid 404 Not Found errors for general requests to the base URL.
+    """
+    return {"message": "Viber UAT Middleware API is running. Access /monitor for live logs."}
+
+# New: Endpoint for favicon.ico to prevent 404s from browsers/bots
+@app.get("/favicon.ico", include_in_schema=False) # include_in_schema=False hides it from Swagger UI
+async def get_favicon():
+    """
+    Handles requests for favicon.ico to prevent 404 errors.
+    Returns a 200 OK status, implying no specific favicon is provided.
+    """
+    # You could return a small, transparent PNG or an actual favicon file here
+    # For now, we'll just return an empty response with a 204 No Content status
+    # or a 200 OK without content if not strictly serving a file.
+    # FastAPI by default would handle it as 200 OK if you return an empty dict,
+    # but 204 No Content is more semantically correct if no content is sent.
+    raise HTTPException(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @app.post("/uat/customers/create")
 async def create_customer(data: CustomerCreate, authorization: str = Header(...)):
     endpoint = "/uat/customers/create"
