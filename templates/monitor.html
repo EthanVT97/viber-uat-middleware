@@ -2,114 +2,58 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🚀 UAT Live Monitor</title>
+  <title>UAT Log Monitor</title>
+  <!-- Auto-refresh every 5 seconds -->
+  <meta http-equiv="refresh" content="5"> 
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Auto Refresh + Filters -->
-  <script>
-    let refreshInterval = 5000; // 5 seconds
-    let currentFilter = 'all';
-
-    // Auto Refresh
-    function startAutoRefresh() {
-      setTimeout(() => {
-        window.location.reload();
-      }, refreshInterval);
+  <style>
+    /* Custom styling for preformatted payload */
+    pre {
+      white-space: pre-wrap; /* Allows text to wrap */
+      word-break: break-all; /* Breaks long words */
     }
-
-    // Filter Logs
-    function filterLogs(type) {
-      currentFilter = type;
-      const rows = document.querySelectorAll('tbody tr');
-      rows.forEach(row => {
-        const endpoint = row.querySelector('.endpoint').textContent;
-        const isVisible = 
-          (type === 'all') || 
-          (type === 'viber' && endpoint.includes('viber')) ||
-          (type === 'uat' && endpoint.includes('uat'));
-        row.style.display = isVisible ? '' : 'none';
-      });
-    }
-
-    // Start on page load
-    document.addEventListener('DOMContentLoaded', () => {
-      startAutoRefresh();
-    });
-  </script>
+  </style>
 </head>
-<body class="bg-gray-50 font-sans">
-  <div class="container mx-auto p-4">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-800">🚀 UAT Live Monitor</h1>
-        <p class="text-gray-600">Real-time request logs</p>
-      </div>
-      <div class="mt-4 md:mt-0 flex space-x-2">
-        <button onclick="filterLogs('all')" class="px-3 py-1 bg-blue-100 text-blue-800 rounded-md text-sm">
-          All Logs
-        </button>
-        <button onclick="filterLogs('viber')" class="px-3 py-1 bg-purple-100 text-purple-800 rounded-md text-sm">
-          Viber Only
-        </button>
-        <button onclick="filterLogs('uat')" class="px-3 py-1 bg-green-100 text-green-800 rounded-md text-sm">
-          UAT APIs
-        </button>
-      </div>
-    </div>
-
-    <!-- Logs Table -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-100">
-            <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Endpoint</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Details</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            {% for log in logs %}
-            <tr class="hover:bg-gray-50">
-              <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
-                {{ log.time | replace("T", " ") | replace(".000Z", "") }}
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap text-sm font-mono endpoint">
-                {{ log.endpoint }}
-              </td>
-              <td class="px-4 py-3 whitespace-nowrap">
-                <span class="px-2 py-1 text-xs rounded-full 
-                  {% if log.status == '✅' %}bg-green-100 text-green-800
-                  {% else %}bg-red-100 text-red-800{% endif %}">
-                  {{ log.status }}
-                </span>
-              </td>
-              <td class="px-4 py-3 text-sm">
-                <div class="bg-gray-50 p-2 rounded-md max-w-xs overflow-x-auto">
-                  <pre class="text-xs text-gray-800">{{ log.payload | tojson(indent=2) }}</pre>
-                </div>
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Footer -->
-    <div class="mt-4 text-center text-xs text-gray-500">
-      <p>🔄 Auto-refreshing in <span id="countdown">5</span> seconds</p>
-      <script>
-        // Countdown
-        let seconds = 5;
-        setInterval(() => {
-          seconds = seconds > 0 ? seconds - 1 : 5;
-          document.getElementById('countdown').textContent = seconds;
-        }, 1000);
-      </script>
-    </div>
+<body class="bg-gray-100 font-sans p-6">
+  <h1 class="text-2xl font-bold mb-4">📊 UAT Request Monitor</h1>
+  <p class="text-gray-600 mb-4 text-sm">Logs auto-refresh every 5 seconds. Latest 100 requests.</p>
+  <div class="overflow-x-auto bg-white rounded shadow p-4">
+    <table class="table-auto w-full text-sm">
+      <thead>
+        <tr class="bg-gray-200 text-left">
+          <th class="p-2 w-40">Time (UTC)</th>
+          <th class="p-2 w-48">Endpoint</th>
+          <th class="p-2 w-32">Status</th>
+          <th class="p-2">Payload / Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr class="border-t">
+          <td class="p-2 text-gray-600">{{ log.time }}</td>
+          <td class="p-2 font-mono">{{ log.endpoint }}</td>
+          <td class="p-2 
+            {% if '✅ Success' in log.status %}text-green-600
+            {% elif '❌ Auth Failed' in log.status %}text-red-500 font-semibold
+            {% elif '💥 Error' in log.status %}text-red-700 font-bold
+            {% else %}text-gray-700{% endif %}">
+            {{ log.status }}
+          </td>
+          <td class="p-2">
+            <pre class="text-xs">
+              {% if log.error %}
+                <span class="text-red-800 font-mono">Error: {{ log.error }}</span>
+                <br>
+                Payload: {{ log.payload | tojson(indent=2) }}
+              {% else %}
+                {{ log.payload | tojson(indent=2) }}
+              {% endif %}
+            </pre>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </body>
 </html>
