@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>UAT Log Monitor</title>
   <!-- Auto-refresh every 5 seconds -->
-  <meta http-equiv="refresh" content="5"> 
+  <meta http-equiv="refresh" content="5">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     /* Custom styling for preformatted payload */
@@ -32,7 +32,7 @@
         <tr class="border-t">
           <td class="p-2 text-gray-600">{{ log.time }}</td>
           <td class="p-2 font-mono">{{ log.endpoint }}</td>
-          <td class="p-2 
+          <td class="p-2
             {% if '✅ Success' in log.status %}text-green-600
             {% elif '❌ Auth Failed' in log.status %}text-red-500 font-semibold
             {% elif '💥 Error' in log.status %}text-red-700 font-bold
