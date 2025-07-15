@@ -3,24 +3,34 @@
 # Use official Python image with slim-buster base
 FROM python:3.10-slim-buster as builder
 
-# Install build dependencies (for wheels like pydantic, cryptography)
+# Install common build dependencies, including curl for Rustup
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libffi-dev \
-    # Clean up apt caches to reduce image size
+    curl \ # Add curl to download rustup installer
     && rm -rf /var/lib/apt/lists/*
 
 # Set HOME to a writable directory like /tmp during the build stage.
-# This ensures that tools like Cargo/Rustup (used by pydantic for its Rust extensions)
+# This ensures that tools like Cargo/Rustup (used by pydantic's Rust extensions)
 # write their caches and registries to a writable location, preventing "Read-only file system" errors.
 ENV HOME=/tmp
 
-# Set CARGO_HOME and RUSTUP_HOME to subdirectories within HOME for proper Rust toolchain management.
+# Explicitly define Cargo/Rustup home directories relative to HOME.
+# This is crucial for forcing Rust toolchain to use /tmp.
 ENV CARGO_HOME="$HOME/.cargo"
 ENV RUSTUP_HOME="$HOME/.rustup"
 
-# Explicitly create these directories to ensure they exist and are writable
-RUN mkdir -p "$CARGO_HOME" "$RUSTUP_HOME"
+# Install Rust toolchain (rustup and cargo) into the writable /tmp directory.
+# -y: yes to all prompts
+# --no-modify-path: we will manage PATH ourselves
+# --profile minimal: install only essential components to keep image smaller
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal \
+    # Ensure generated directories have proper permissions if needed, though rustup usually handles this.
+    && chmod -R a+rwx "$CARGO_HOME" "$RUSTUP_HOME"
+
+# Add Cargo's bin directory to PATH for the current builder stage.
+# This makes `cargo` and `maturin` available for subsequent pip installs.
+ENV PATH="$CARGO_HOME/bin:$PATH"
 
 # Create and activate virtual environment
 RUN python -m venv /opt/venv
@@ -31,7 +41,8 @@ RUN pip install --upgrade pip setuptools wheel
 
 # Install dependencies first for caching
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Run pip install with a temporary build directory for greater robustness
+RUN pip install --no-cache-dir --build-option="--build-dir=/tmp/pip-build" -r requirements.txt
 
 # --- Runtime Stage ---
 FROM python:3.10-slim-buster
@@ -40,13 +51,12 @@ FROM python:3.10-slim-buster
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Reset HOME to something more conventional for the app user, or leave it as default.
-# If HOME needs to be writable for runtime operations, ensure /appuser's home is accessible.
-# Default for useradd -m is /home/appuser.
-ENV HOME=/home/appuser # Reset HOME for the runtime stage, as build-time settings are no longer needed.
+# Reset HOME to the app user's home directory for the runtime stage.
+# This ensures a clean and conventional environment for the running application.
+ENV HOME=/home/appuser
 
 # Set non-root user for security
-# Ensure /appuser's home directory is created and owned correctly
+# Ensure /home/appuser directory is created and owned correctly for the appuser.
 RUN useradd -m appuser && chown -R appuser /app
 USER appuser
 
