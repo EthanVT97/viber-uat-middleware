@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Set HOME to a writable directory like /tmp during the build stage.
-# This ensures that tools like Cargo/Rustup (used by pydantic's Rust extensions)
+# This ensures that tools like Cargo/Rustup (used by pydantic for its Rust extensions)
 # write their caches and registries to a writable location, preventing "Read-only file system" errors.
 ENV HOME=/tmp
 
@@ -24,6 +24,7 @@ ENV RUSTUP_HOME="$HOME/.rustup"
 # -y: yes to all prompts
 # --no-modify-path: we will manage PATH ourselves
 # --profile minimal: install only essential components to keep image smaller
+# Note: Ensure curl is installed before this step.
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path --profile minimal \
     # Ensure generated directories have proper permissions if needed, though rustup usually handles this.
     && chmod -R a+rwx "$CARGO_HOME" "$RUSTUP_HOME"
@@ -36,13 +37,19 @@ ENV PATH="$CARGO_HOME/bin:$PATH"
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Upgrade pip and install wheels
-RUN pip install --upgrade pip setuptools wheel
+# Upgrade pip and install wheels.
+# Explicitly install `maturin` here. Even though pip handles build backends,
+# sometimes pre-installing it ensures it's available in the main environment.
+RUN pip install --upgrade pip setuptools wheel maturin
 
 # Install dependencies first for caching
 COPY requirements.txt .
-# Run pip install with a temporary build directory for greater robustness
-RUN pip install --no-cache-dir --build-option="--build-dir=/tmp/pip-build" -r requirements.txt
+# Run pip install with --no-cache-dir and --no-build-isolation.
+# --no-cache-dir: Disables pip's internal package cache.
+# --no-build-isolation: Prevents pip from installing build dependencies (like maturin)
+#                       into a temporary isolated environment. This forces them to use
+#                       the main build environment where HOME and CARGO_HOME are controlled.
+RUN pip install --no-cache-dir --no-build-isolation -r requirements.txt
 
 # --- Runtime Stage ---
 FROM python:3.10-slim-buster
