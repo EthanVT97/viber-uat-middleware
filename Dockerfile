@@ -9,6 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Set CARGO_HOME and RUSTUP_HOME to a writable location for Rust/maturin builds
+# This resolves "Read-only file system" errors during compilation of Rust-dependent packages.
+ENV CARGO_HOME="/tmp/.cargo"
+ENV RUSTUP_HOME="/tmp/.rustup"
+
 # Create and activate virtual environment
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
