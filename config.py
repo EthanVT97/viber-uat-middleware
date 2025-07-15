@@ -1,5 +1,3 @@
---- START OF FILE viber-uat-middleware-main/config.py ---
-
 import os
 
 class Config:
@@ -58,4 +56,3 @@ class Config:
 
 # Validate keys on import (when the app starts)
 Config.validate_keys()
---- END OF FILE viber-uat-middleware-main/config.py ---
