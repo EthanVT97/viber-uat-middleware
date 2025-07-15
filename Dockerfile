@@ -1,31 +1,47 @@
-FROM python:3.10-slim-buster
+# Use official Python image with slim-buster base
+FROM python:3.10-slim-buster as builder
 
-# Set the working directory inside the container
-WORKDIR /app
-
-# Copy the requirements file and install dependencies first.
-# This leverages Docker's layer caching: if requirements.txt doesn't change,
-# this step won't re-run, speeding up subsequent builds.
-COPY requirements.txt .
-
-# Install build dependencies that Pydantic (and others) might need.
-# These typically include build-essential for C/C++ compilers, and possibly libffi-dev, etc.
-# Also, upgrade pip, setuptools, and wheel for best wheel compatibility.
+# Install build dependencies (for wheels like pydantic, cryptography)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libffi-dev \
-    && rm -rf /var/lib/apt/lists/* \
-    && python -m pip install --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir -r requirements.txt
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy the rest of your application code into the container
-COPY . .
+# Create and activate virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# Expose the port your FastAPI application will listen on.
-# This should match the port specified in your uvicorn command.
-EXPOSE 10000
+# Upgrade pip and install wheels
+RUN pip install --upgrade pip setuptools wheel
 
-# Command to run your application.
-# Use 0.0.0.0 for the host to make it accessible outside the container.
-# Use the same port as EXPOSE.
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]
+# Install dependencies first for caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# --- Runtime Stage ---
+FROM python:3.10-slim-buster
+
+# Copy virtual env from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Set non-root user for security
+RUN useradd -m appuser && chown -R appuser /app
+USER appuser
+
+# Set working directory
+WORKDIR /app
+
+# Copy only necessary files (exclude .git, __pycache__ etc.)
+COPY --chown=appuser:appuser main.py .
+COPY --chown=appuser:appuser app/ ./app/  # If you have an "app" module
+
+# Expose port (match with Fly.io internal port)
+EXPOSE 8080  # Fly.io uses 8080 by default
+
+# Health check for Fly.io
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+# Run Uvicorn (adjust module name as needed)
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2"]
