@@ -495,4 +495,293 @@ async def viber_webhook(request: Request):
                 # Payment Recording Flow
                 elif current_state == STATE_COLLECTING_PAYMENT_USER_ID:
                     if not message_text.strip():
-                        await send_viber_message(sender_id, "အသုံးပြုသူ ID မထည့်ရသေးပါ။ ကျေးဇူးပြု
+                        await send_viber_message(sender_id, "အသုံးပြုသူ ID မထည့်ရသေးပါ။ ကျေးဇူးပြု၍ **အသုံးပြုသူ ID** ကို ထည့်သွင်းပေးပါ:")
+                    else:
+                        user_data["user_id"] = message_text
+                        user_states[sender_id]["data"] = user_data
+                        user_states[sender_id]["state"] = STATE_COLLECTING_PAYMENT_AMOUNT
+                        await send_viber_message(sender_id, f"အသုံးပြုသူ ID ကတော့ `{message_text}` ဖြစ်ပါတယ်။ အခု **ငွေပမာဏ** (ဥပမာ: 50000) ကို ထည့်သွင်းပေးပါ:")
+
+                elif current_state == STATE_COLLECTING_PAYMENT_AMOUNT:
+                    try:
+                        amount = int(message_text.strip())
+                        if amount <= 0:
+                            raise ValueError("Amount must be positive")
+                        user_data["amount"] = amount
+                        user_states[sender_id]["data"] = user_data
+                        user_states[sender_id]["state"] = STATE_COLLECTING_PAYMENT_METHOD
+                        await send_viber_message(sender_id, f"ငွေပမာဏကတော့ `{amount}` ဖြစ်ပါတယ်။ အခု **ငွေပေးချေမှု နည်းလမ်း** (ဥပမာ: KBZ Pay, Wave Money, Cash) ကို ထည့်သွင်းပေးပါ:")
+                    except ValueError:
+                        await send_viber_message(sender_id, "ငွေပမာဏ မမှန်ကန်ပါ။ ကျေးဇူးပြု၍ မှန်ကန်သော **ငွေပမာဏ** (ဂဏန်းများသာ) ကို ထည့်သွင်းပေးပါ:")
+
+                elif current_state == STATE_COLLECTING_PAYMENT_METHOD:
+                    if not message_text.strip():
+                        await send_viber_message(sender_id, "ငွေပေးချေမှု နည်းလမ်း မထည့်ရသေးပါ။ ကျေးဇူးပြု၍ **ငွေပေးချေမှု နည်းလမ်း** ကို ထည့်သွင်းပေးပါ:")
+                    else:
+                        user_data["method"] = message_text
+                        user_states[sender_id]["data"] = user_data
+                        user_states[sender_id]["state"] = STATE_COLLECTING_PAYMENT_REFERENCE_ID
+                        await send_viber_message(sender_id, f"ငွေပေးချေမှု နည်းလမ်းကတော့ `{message_text}` ဖြစ်ပါတယ်။ နောက်ဆုံးအနေနဲ့ **Reference ID** (ဥပမာ: REF123456) ကို ထည့်သွင်းပေးပါ:")
+
+                elif current_state == STATE_COLLECTING_PAYMENT_REFERENCE_ID:
+                    if not message_text.strip():
+                        await send_viber_message(sender_id, "Reference ID မထည့်ရသေးပါ။ ကျေးဇူးပြု၍ **Reference ID** ကို ထည့်သွင်းပေးပါ:")
+                    else:
+                        user_data["reference_id"] = message_text
+                        user_states[sender_id]["data"] = user_data
+
+                        await send_viber_message(sender_id, "ကျေးဇူးတင်ပါတယ်။ ငွေပေးချေမှု မှတ်တမ်းတင်နေပါပြီ...")
+                        try:
+                            payment_data_model = Payment(**user_data)
+                            result = await _process_payment_record(payment_data_model)
+                            if result and result.get("status") == "success":
+                                await send_viber_message(sender_id, "✅ ငွေပေးချေမှု မှတ်တမ်းကို အောင်မြင်စွာ တင်ပြီးပါပြီ။")
+                            else:
+                                await send_viber_message(sender_id, f"❌ ငွေပေးချေမှု မှတ်တမ်းတင်ခြင်း မအောင်မြင်ပါ။: {result.get('message', 'အမှားအယွင်း တစ်ခုခု ဖြစ်ပွားခဲ့ပါသည်။')}")
+                        except ValidationError as ex:
+                            await send_viber_message(sender_id, f"ငွေပေးချေမှု အချက်အလက် ထည့်သွင်းမှု မှားယွင်းပါသည်။: {ex.errors()[0]['msg']}. ကျေးဇူးပြု၍ ထပ်မံကြိုးစားပါ။")
+                        except Exception as ex:
+                            print(f"Error calling _process_payment_record: {ex}")
+                            await send_viber_message(sender_id, "💥 ငွေပေးချေမှု မှတ်တမ်းတင်နေစဉ် အမှားအယွင်း ဖြစ်ပွားခဲ့ပါသည်။ ကျေးဇူးပြု၍ ထပ်မံကြိုးစားပါ။")
+
+                        user_states[sender_id] = {"state": STATE_IDLE, "data": {}}
+                        await send_main_menu(sender_id)
+
+                # Chat Log Submission Flow
+                elif current_state == STATE_COLLECTING_CHATLOG_VIBER_ID:
+                    if not message_text.strip():
+                        await send_viber_message(sender_id, "Viber ID မထည့်ရသေးပါ။ ကျေးဇူးပြု၍ **Viber ID** ကို ထည့်သွင်းပေးပါ:")
+                    else:
+                        user_data["viber_id"] = message_text
+                        user_states[sender_id]["data"] = user_data
+                        user_states[sender_id]["state"] = STATE_COLLECTING_CHATLOG_MESSAGE
+                        await send_viber_message(sender_id, f"Viber ID ကတော့ `{message_text}` ဖြစ်ပါတယ်။ အခု **Chat စာပိုဒ်** ကို ထည့်သွင်းပေးပါ:")
+
+                elif current_state == STATE_COLLECTING_CHATLOG_MESSAGE:
+                    if not message_text.strip():
+                        await send_viber_message(sender_id, "Chat စာပိုဒ် မထည့်ရသေးပါ။ ကျေးဇူးပြု၍ **Chat စာပိုဒ်** ကို ထည့်သွင်းပေးပါ:")
+                    else:
+                        user_data["message"] = message_text
+                        user_data["timestamp"] = datetime.utcnow().isoformat()
+                        user_data["type"] = "user_message"
+                        user_states[sender_id]["data"] = user_data
+
+                        await send_viber_message(sender_id, "ကျေးဇူးတင်ပါတယ်။ Chat Log တင်သွင်းနေပါပြီ...")
+                        try:
+                            chatlog_data_model = ChatLog(**user_data)
+                            result = await _process_chat_log_submission(chatlog_data_model)
+                            if result and result.get("status") == "success":
+                                await send_viber_message(sender_id, "✅ Chat Log ကို အောင်မြင်စွာ တင်သွင်းပြီးပါပြီ။")
+                            else:
+                                await send_viber_message(sender_id, f"❌ Chat Log တင်သွင်းခြင်း မအောင်မြင်ပါ။: {result.get('message', 'အမှားအယွင်း တစ်ခုခု ဖြစ်ပွားခဲ့ပါသည်။')}")
+                        except ValidationError as ex:
+                            await send_viber_message(sender_id, f"Chat Log အချက်အလက် ထည့်သွင်းမှု မှားယွင်းပါသည်။: {ex.errors()[0]['msg']}. ကျေးဇူးပြု၍ ထပ်မံကြိုးစားပါ။")
+                        except Exception as ex:
+                            print(f"Error calling _process_chat_log_submission: {ex}")
+                            await send_viber_message(sender_id, "💥 Chat Log တင်သွင်းနေစဉ် အမှားအယွင်း ဖြစ်ပွားခဲ့ပါသည်။ ကျေးဇူးပြု၍ ထပ်မံကြိုးစားပါ။")
+
+                        user_states[sender_id] = {"state": STATE_IDLE, "data": {}}
+                        await send_main_menu(sender_id)
+
+                # Agent Conversation Flow
+                elif current_state == STATE_TALKING_TO_AGENT:
+                    # Forward user message to agent dashboard
+                    agent_message_data = {
+                        "type": "user_message",
+                        "viber_id": sender_id,
+                        "message": message_text,
+                        "timestamp": datetime.utcnow().isoformat()
+                    }
+                    await agent_broadcast_queue.put(agent_message_data)
+                    
+                    # Log the conversation for monitoring
+                    log_request("/agent/conversation", "💬 User Message", agent_message_data)
+                    
+                    # Send acknowledgment to user
+                    await send_viber_message(sender_id, "📨 သင့်စာကို Agent ဆီပို့ပြီးပါပြီ။ ပြန်ဖြေကြားမှုအတွက် ခေတ္တစောင့်ဆိုင်းပေးပါ။")
+
+                # Handle unrecognized commands in IDLE state
+                elif current_state == STATE_IDLE:
+                    unrecognized_response = (
+                        f"ကျွန်ုပ် '{message_text}' ကို နားမလည်ပါဘူး။ \n"
+                        "ကျေးဇူးပြု၍ အောက်ပါ menu ခလုတ်များကို အသုံးပြုပါ:"
+                    )
+                    await send_viber_message(sender_id, unrecognized_response, MAIN_MENU_KEYBOARD)
+
+                # Handle unexpected states
+                else:
+                    await send_viber_message(sender_id, "အမှားအယွင်း ဖြစ်ပွားခဲ့ပါသည်။ ကျေးဇူးပြု၍ ပြန်လည်စတင်ပါ။")
+                    user_states[sender_id] = {"state": STATE_IDLE, "data": {}}
+                    await send_main_menu(sender_id)
+
+            # Handle non-text messages
+            else:
+                await send_viber_message(sender_id, "ကျွန်ုပ်တို့ text message များကိုသာ လက်ခံပါသည်။ ကျေးဇူးပြု၍ text ဖြင့်ပေးပို့ပါ။")
+
+        # Handle other event types (delivered, seen, failed, etc.)
+        else:
+            print(f"Received Viber event '{event_type}' from {sender_id}")
+
+        return {"status": "ok", "message": "Event processed successfully"}
+
+    except Exception as e:
+        error_message = f"Viber webhook error: {str(e)}"
+        print(error_message)
+        log_request(endpoint, "💥 Webhook Error", {"error": error_message})
+        return {"status": "error", "message": error_message}
+
+
+# Agent Dashboard endpoints
+def verify_monitor_credentials(credentials: HTTPBasicCredentials = Depends(security)):
+    is_correct_username = secrets.compare_digest(credentials.username, MONITOR_USERNAME)
+    is_correct_password = secrets.compare_digest(credentials.password, MONITOR_PASSWORD)
+    if not (is_correct_username and is_correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials
+
+@app.get("/agent_dashboard", response_class=HTMLResponse)
+async def agent_dashboard(request: Request, credentials: HTTPBasicCredentials = Depends(verify_monitor_credentials)):
+    return templates.TemplateResponse("agent_dashboard.html", {"request": request})
+
+@app.get("/agent/events")
+async def agent_events_stream(credentials: HTTPBasicCredentials = Depends(verify_monitor_credentials)):
+    """Server-Sent Events endpoint for agent dashboard"""
+    async def event_stream():
+        try:
+            yield "data: {\"type\": \"connected\", \"message\": \"Agent dashboard connected\"}\n\n"
+            
+            while True:
+                try:
+                    # Wait for new events with timeout
+                    event = await asyncio.wait_for(agent_broadcast_queue.get(), timeout=30.0)
+                    yield f"data: {json.dumps(event)}\n\n"
+                except asyncio.TimeoutError:
+                    # Send heartbeat to keep connection alive
+                    yield "data: {\"type\": \"heartbeat\"}\n\n"
+                except Exception as e:
+                    print(f"Error in event stream: {e}")
+                    break
+        except Exception as e:
+            print(f"Event stream error: {e}")
+            yield f"data: {{\"type\": \"error\", \"message\": \"Stream error: {str(e)}\"}}\n\n"
+    
+    return StreamingResponse(event_stream(), media_type="text/plain")
+
+@app.post("/agent/send_message")
+async def agent_send_message(data: AgentSendMessage, credentials: HTTPBasicCredentials = Depends(verify_monitor_credentials)):
+    """Endpoint for agents to send messages to users"""
+    try:
+        # Send message to user via Viber
+        await send_viber_message(data.receiver_viber_id, data.message_text)
+        
+        # Log the agent message
+        log_request("/agent/send_message", "📤 Agent Message", {
+            "receiver_viber_id": data.receiver_viber_id,
+            "message_text": data.message_text,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        # Broadcast to other agents (optional, for monitoring)
+        await agent_broadcast_queue.put({
+            "type": "agent_message",
+            "viber_id": data.receiver_viber_id,
+            "message": data.message_text,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        return {"status": "success", "message": "Message sent successfully"}
+    
+    except Exception as e:
+        error_message = f"Failed to send message: {str(e)}"
+        log_request("/agent/send_message", "💥 Send Error", {
+            "receiver_viber_id": data.receiver_viber_id,
+            "error": error_message
+        })
+        raise HTTPException(status_code=500, detail=error_message)
+
+@app.post("/agent/end_chat")
+async def agent_end_chat(data: AgentEndChat, credentials: HTTPBasicCredentials = Depends(verify_monitor_credentials)):
+    """Endpoint for agents to end chat sessions"""
+    try:
+        # Reset user state
+        if data.viber_id in user_states:
+            user_states[data.viber_id] = {"state": STATE_IDLE, "data": {}}
+        
+        # Notify user that chat has ended
+        await send_viber_message(data.viber_id, "Customer Agent နှင့် စကားပြောဆိုခြင်းကို ရပ်နားလိုက်ပါပြီ။")
+        await send_main_menu(data.viber_id)
+        
+        # Log the action
+        log_request("/agent/end_chat", "🔚 Chat Ended", {
+            "viber_id": data.viber_id,
+            "ended_by": "agent",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        # Broadcast to agent dashboard
+        await agent_broadcast_queue.put({
+            "type": "conversation_ended",
+            "viber_id": data.viber_id,
+            "timestamp": datetime.utcnow().isoformat(),
+            "reason": "Agent ended chat"
+        })
+        
+        return {"status": "success", "message": "Chat ended successfully"}
+    
+    except Exception as e:
+        error_message = f"Failed to end chat: {str(e)}"
+        log_request("/agent/end_chat", "💥 End Chat Error", {
+            "viber_id": data.viber_id,
+            "error": error_message
+        })
+        raise HTTPException(status_code=500, detail=error_message)
+
+# Monitor Dashboard (existing functionality)
+@app.get("/monitor", response_class=HTMLResponse)
+async def monitor_dashboard(request: Request, credentials: HTTPBasicCredentials = Depends(verify_monitor_credentials)):
+    return templates.TemplateResponse("monitor.html", {"request": request})
+
+@app.get("/monitor/logs")
+async def get_logs(credentials: HTTPBasicCredentials = Depends(verify_monitor_credentials)):
+    return {"logs": log_store}
+
+@app.get("/monitor/events")
+async def monitor_events_stream(credentials: HTTPBasicCredentials = Depends(verify_monitor_credentials)):
+    """Server-Sent Events endpoint for monitor dashboard"""
+    async def event_stream():
+        try:
+            yield "data: {\"type\": \"connected\", \"message\": \"Monitor connected\"}\n\n"
+            
+            last_log_count = len(log_store)
+            while True:
+                await asyncio.sleep(1)  # Check every second
+                current_log_count = len(log_store)
+                
+                if current_log_count > last_log_count:
+                    # Send new logs
+                    new_logs = log_store[last_log_count:]
+                    for log in new_logs:
+                        yield f"data: {json.dumps(log)}\n\n"
+                    last_log_count = current_log_count
+                
+        except Exception as e:
+            print(f"Monitor event stream error: {e}")
+            yield f"data: {{\"type\": \"error\", \"message\": \"Stream error: {str(e)}\"}}\n\n"
+    
+    return StreamingResponse(event_stream(), media_type="text/plain")
+
+# Development server runner
+if __name__ == "__main__":
+    # Use environment variables for configuration
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    
+    print(f"Starting Viber UAT Middleware on {host}:{port}")
+    print(f"Monitor Dashboard: http://{host}:{port}/monitor")
+    print(f"Agent Dashboard: http://{host}:{port}/agent_dashboard")
+    
+    uvicorn.run(app, host=host, port=port)
