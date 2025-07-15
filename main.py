@@ -1,5 +1,3 @@
---- START OF FILE viber-uat-middleware-main/main.py ---
-
 from fastapi import FastAPI, Request, Header, HTTPException, status, Depends
 from fastapi.responses import HTMLResponse, StreamingResponse
 from fastapi.templating import Jinja2Templates
