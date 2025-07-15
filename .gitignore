@@ -1,14 +1,61 @@
-# Python
+# ----- Python -----
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
-.env
+*.so
+.Python
 venv/
+env/
+.venv/
+pip-selfcheck.json
 
-# IDE
+# ----- Development Files -----
+.env
+.env.prod
+.env.dev
+.env.test
+.venv
+*.env
+.envrc
+/secrets/  # Local secrets directory
+
+# ----- Build & Deployment -----
+.dockerignore
+Dockerfile.local
+docker-compose*.yml
+fly.toml.local
+**/__pycache__/
+
+# ----- IDE & Editor -----
 .vscode/
 .idea/
+*.swp
+*.swo
+*.sublime-*
+*.code-workspace
 
-# Logs
+# ----- Logs & System -----
 *.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.bak
+.DS_Store
+Thumbs.db
+
+# ----- Testing & Coverage -----
+.coverage
+htmlcov/
+.pytest_cache/
+test_output/
+
+# ----- Fly.io Specific -----
+.fly/
+flyctl.state
+*.fly.yml
+
+# ----- Docker -----
+**/docker-compose.override.yml
+**/.docker.env
