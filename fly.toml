@@ -1,0 +1,11 @@
+app = "vibeuat"  # Fly.io app name (lowercase, hyphens only)
+primary_region = "sin" # Singapore region (or choose "hkg", "nrt", etc.)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080  # Must match EXPOSE in Dockerfile
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
