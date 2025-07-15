@@ -7,12 +7,20 @@ FROM python:3.10-slim-buster as builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libffi-dev \
+    # Clean up apt caches to reduce image size
     && rm -rf /var/lib/apt/lists/*
 
-# Set CARGO_HOME and RUSTUP_HOME to a writable location for Rust/maturin builds
-# This resolves "Read-only file system" errors during compilation of Rust-dependent packages.
-ENV CARGO_HOME="/tmp/.cargo"
-ENV RUSTUP_HOME="/tmp/.rustup"
+# Set HOME to a writable directory like /tmp during the build stage.
+# This ensures that tools like Cargo/Rustup (used by pydantic for its Rust extensions)
+# write their caches and registries to a writable location, preventing "Read-only file system" errors.
+ENV HOME=/tmp
+
+# Set CARGO_HOME and RUSTUP_HOME to subdirectories within HOME for proper Rust toolchain management.
+ENV CARGO_HOME="$HOME/.cargo"
+ENV RUSTUP_HOME="$HOME/.rustup"
+
+# Explicitly create these directories to ensure they exist and are writable
+RUN mkdir -p "$CARGO_HOME" "$RUSTUP_HOME"
 
 # Create and activate virtual environment
 RUN python -m venv /opt/venv
@@ -32,7 +40,13 @@ FROM python:3.10-slim-buster
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
+# Reset HOME to something more conventional for the app user, or leave it as default.
+# If HOME needs to be writable for runtime operations, ensure /appuser's home is accessible.
+# Default for useradd -m is /home/appuser.
+ENV HOME=/home/appuser # Reset HOME for the runtime stage, as build-time settings are no longer needed.
+
 # Set non-root user for security
+# Ensure /appuser's home directory is created and owned correctly
 RUN useradd -m appuser && chown -R appuser /app
 USER appuser
 
