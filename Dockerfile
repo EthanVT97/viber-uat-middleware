@@ -1,3 +1,5 @@
+--- START OF FILE viber-uat-middleware-main/Dockerfile ---
+
 # Use official Python image with slim-buster base
 FROM python:3.10-slim-buster as builder
 
@@ -34,7 +36,10 @@ WORKDIR /app
 
 # Copy only necessary files (exclude .git, __pycache__ etc.)
 COPY --chown=appuser:appuser main.py .
-COPY --chown=appuser:appuser app/ ./app/  # If you have an "app" module
+COPY --chown=appuser:appuser config.py .
+COPY --chown=appuser:appuser log_storage.py .
+COPY --chown=appuser:appuser app/ ./app/  # If you have an "app" module, make sure it exists
+COPY --chown=appuser:appuser templates/ ./templates/
 
 # Expose port (match with Fly.io internal port)
 EXPOSE 8080  # Fly.io uses 8080 by default
@@ -45,3 +50,4 @@ HEALTHCHECK --interval=30s --timeout=3s \
 
 # Run Uvicorn (adjust module name as needed)
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "2"]
+--- END OF FILE viber-uat-middleware-main/Dockerfile ---
