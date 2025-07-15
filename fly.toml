@@ -1,4 +1,4 @@
-app = "vibeuat"  # Fly.io app name (lowercase, hyphens only)
+app = "viberuat"  # Fly.io app name (lowercase, hyphens only)
 primary_region = "sin" # Singapore region (or choose "hkg", "nrt", etc.)
 
 [build]
